@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+:root {
+  height: 100%;
+}
+
+/* 允许 html 滚动，去掉这里的 overflow: hidden */
+html, body, #app {
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: #f9fafb;
+}
+
+/* 保持滚动条美化 */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-thumb { background-color: #d1d5db; border-radius: 10px; }
