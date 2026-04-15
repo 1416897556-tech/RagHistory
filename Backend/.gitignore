@@ -1,0 +1,9 @@
+# 忽略环境变量文件
+.env
+.env.local
+.env.*.local
+
+# 如果有 Python 虚拟环境也可以顺便加上
+venv/
+__pycache__/
+*.pyc
