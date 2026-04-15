@@ -1,3 +1,4 @@
+from passlib.context import CryptContext
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 import os
@@ -119,13 +120,24 @@ def delete_chat_session(session_id: str):
     finally:
         db.close()
 
-def get_all_users():
-    """获取全平台所有用户列表"""
+
+def get_all_users(search_query: str = None):
+    """获取用户列表，支持按用户名模糊搜索"""
     db = SessionLocal()
     try:
-        # 获取除了密码 hash 以外的所有关键信息
-        sql = text("SELECT id, username, nickname, role FROM users ORDER BY id DESC")
-        result = db.execute(sql).fetchall()
+        if search_query:
+            # 使用 SQL 的 LIKE 语法进行模糊匹配
+            sql = text("""
+                SELECT id, username, nickname, role 
+                FROM users 
+                WHERE username LIKE :q OR nickname LIKE :q
+                ORDER BY id DESC
+            """)
+            result = db.execute(sql, {"q": f"%{search_query}%"}).fetchall()
+        else:
+            sql = text("SELECT id, username, nickname, role FROM users ORDER BY id DESC")
+            result = db.execute(sql).fetchall()
+
         return [{"id": r[0], "username": r[1], "nickname": r[2], "role": r[3]} for r in result]
     finally:
         db.close()
@@ -211,6 +223,81 @@ def update_session_title_by_admin(session_id: str, new_title: str):
         db.commit()
         return True
     except Exception as e:
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
+
+# 初始化密码加密工具
+pwd_context = CryptContext(
+    schemes=["argon2", "bcrypt"],
+    deprecated="auto"
+)
+
+
+def update_user_profile_db(user_id, nickname, old_password, new_password):
+    db = SessionLocal()
+    try:
+        # 1. 修改查询语句，将字段名改为 password_hash
+        # 建议显式查出需要的列
+        result = db.execute(
+            text("SELECT id, nickname, password_hash FROM users WHERE id = :id"),
+            {"id": user_id}
+        ).fetchone()
+
+        if not result:
+            return False, "用户未找到"
+
+        # 2. 获取数据库中的哈希值
+        # 使用 _mapping 可以通过列名字符串访问，最稳妥
+        db_data = result._mapping
+        current_password_hash = db_data["password_hash"]
+
+        # 3. 如果涉及密码修改
+        if new_password:
+            # 验证原密码：用输入的 old_password 和数据库的 password_hash 对比
+            if not pwd_context.verify(old_password, current_password_hash):
+                return False, "原密码验证失败"
+
+            # 哈希新密码
+            hashed_new_pwd = pwd_context.hash(new_password)
+
+            # 更新语句同步修改字段名为 password_hash
+            db.execute(
+                text("""
+                    UPDATE users 
+                    SET nickname = :n, password_hash = :p 
+                    WHERE id = :id
+                """),
+                {"n": nickname, "p": hashed_new_pwd, "id": user_id}
+            )
+        else:
+            # 只更新昵称
+            db.execute(
+                text("UPDATE users SET nickname = :n WHERE id = :id"),
+                {"n": nickname, "id": user_id}
+            )
+
+        db.commit()
+        return True, "成功"
+    except Exception as e:
+        db.rollback()
+        print(f"Update Profile Error: {e}")
+        return False, str(e)
+    finally:
+        db.close()
+
+def update_session_title_db(session_id: int, new_title: str):
+    db = SessionLocal()
+    try:
+        # 更新指定会话的标题
+        sql = text("UPDATE chat_sessions SET title = :title WHERE id = :id")
+        db.execute(sql, {"title": new_title, "id": session_id})
+        db.commit()
+        return True
+    except Exception as e:
+        print(f"Update Session Title Error: {e}")
         db.rollback()
         return False
     finally:

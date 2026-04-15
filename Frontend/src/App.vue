@@ -8,6 +8,7 @@
         @open-login="showLoginModal = true"
         @logout="logout"
         @go-admin="goToAdmin"
+        @go-profile="handleGoProfile"
       />
     </template>
 
@@ -17,6 +18,15 @@
             @exit="handleExitAdmin"
           />
         </template>
+
+    <template v-else-if="showProfilePage && currentUser">
+      <ProfileManager
+        :currentUser="currentUser"
+        @exit="handleExitProfile"
+        @logout="logout"
+        @update-user="handleUpdateUser"
+      />
+    </template>
 
     <template v-else-if="currentUser">
       <div class="flex h-screen w-full overflow-hidden">
@@ -39,18 +49,44 @@
                  @click="loadSession(session.id)"
                  class="group relative px-3 py-3 text-sm rounded-md cursor-pointer transition-all duration-200 border-l-4"
                  :class="currentSessionId === session.id ? 'bg-[#343541] text-white border-blue-500' : 'hover:bg-[#2A2B32] text-gray-400 border-transparent'">
-              <div class="flex flex-col pr-8">
-                <div class="font-medium truncate">{{ session.title || '历史对话' }}</div>
-                <div class="text-[10px] opacity-30 mt-1">{{ formatDate(session.updated_at) }}</div>
+              <div class="flex flex-col pr-14">
+                <input v-if="editingSessionId === session.id"
+                       v-model="editingTitle"
+                       @click.stop
+                       @keyup.enter="saveTitle(session)"
+                       @blur="saveTitle(session)"
+                       v-focus
+                       class="bg-gray-700 text-white text-xs px-2 py-0.5 rounded outline-none border border-blue-500 w-full" />
+
+                <template v-else>
+                  <div class="font-medium truncate">{{ session.title || '历史对话' }}</div>
+                  <div class="text-[10px] opacity-30 mt-1">{{ formatDate(session.updated_at) }}</div>
+                </template>
               </div>
-              <button @click.stop="handleDelete(session.id)" class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-gray-700 text-gray-500 hover:text-red-500 transition-all">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-              </button>
+
+              <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+
+                <button @click.stop="startEditTitle(session)"
+                        class="p-1.5 rounded-md hover:bg-gray-700 text-gray-500 hover:text-blue-400 transition-colors"
+                        title="重命名">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+
+                <button @click.stop="handleDelete(session.id)"
+                        class="p-1.5 rounded-md hover:bg-gray-700 text-gray-500 hover:text-red-500 transition-colors"
+                        title="删除">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
 
-          <div class="border-t border-white/10 pt-4 mt-auto flex items-center justify-between px-2">
-            <div class="flex items-center gap-2">
+          <div class="border-t border-white/10 pt-4 mt-auto">
+            <div class="flex items-center gap-2 px-2 mb-4">
               <div :class="['w-7 h-7 rounded flex items-center justify-center text-[10px] font-bold shadow-sm',
                             currentUser.role === 'admin' ? 'bg-amber-500' : 'bg-blue-500']">
                 {{ currentUser.nickname[0] }}
@@ -60,7 +96,17 @@
                 <span v-if="currentUser.role === 'admin'" class="text-[8px] bg-amber-500/20 text-amber-400 px-1 rounded w-fit border border-amber-500/30">ADMIN</span>
               </div>
             </div>
-            <button @click="logout" class="text-[10px] text-gray-500 hover:text-red-400 transition-colors">退出</button>
+
+            <div class="flex items-center gap-2 px-2">
+              <button @click="handleGoProfile"
+                      class="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md bg-white/5 hover:bg-white/10 text-gray-300 text-[10px] transition-all border border-white/5">
+                <span>⚙️</span> 管理
+              </button>
+              <button @click="logout(false)"
+                      class="flex-1 py-1.5 rounded-md text-[10px] text-gray-500 hover:text-red-400 transition-colors border border-transparent hover:border-red-400/20">
+                <span>🚪</span> 退出
+              </button>
+            </div>
           </div>
         </aside>
 
@@ -121,6 +167,7 @@ import { ref, onMounted, nextTick } from 'vue';
 import Login from './components/Login.vue';
 import Guide from './components/Guide.vue';
 import AdminManager from './components/AdminManager.vue';
+import ProfileManager from './components/ProfileManager.vue';
 
 // --- 状态变量 ---
 const currentUser = ref(null);
@@ -135,6 +182,9 @@ const messages = ref([]);
 const showLoginModal = ref(false);
 const API_BASE = 'http://127.0.0.1:8000';
 const showAdminPage = ref(false); // 控制管理页面的显示
+const showProfilePage = ref(false); // 新增状态
+const editingSessionId = ref(null); // 当前正在编辑标题的会话ID
+const editingTitle = ref('');       // 临时存放编辑中的标题内容
 
 // --- 初始化与生命周期 ---
 onMounted(() => {
@@ -157,6 +207,47 @@ const onLoginSuccess = (userData) => {
   fetchSessions();
   startNewChat();
   // 登录成功后依然留在 Guide 页面，等待用户点击“开始探索”
+};
+
+// 自动聚焦指令
+const vFocus = {
+  mounted: (el) => el.focus()
+};
+
+const startEditTitle = (session) => {
+  editingSessionId.value = session.id;
+  editingTitle.value = session.title || '历史对话';
+};
+
+const saveTitle = async (session) => {
+  // 如果当前没在编辑这个 session，直接返回
+  if (editingSessionId.value !== session.id) return;
+
+  const trimmedTitle = editingTitle.value.trim();
+
+  // 如果内容没变，直接取消编辑模式即可，不发请求
+  if (trimmedTitle === session.title) {
+    editingSessionId.value = null;
+    return;
+  }
+
+  try {
+    const response = await fetch(`http://127.0.0.1:8000/sessions/${session.id}/title`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: trimmedTitle })
+    });
+
+    if (response.ok) {
+      session.title = trimmedTitle; // 成功后更新本地显示
+    } else {
+      alert("更新标题失败");
+    }
+  } catch (error) {
+    console.error("请求出错:", error);
+  } finally {
+    editingSessionId.value = null; // 无论如何都关闭编辑框
+  }
 };
 
 // 退出登录
@@ -191,15 +282,24 @@ const enterApp = () => {
   }
 };
 
-const logout = () => {
-  if (confirm('确定退出吗？')) {
-    localStorage.removeItem('user');
-    currentUser.value = null;
-    showGuide.value = true; // 退出后回到引导页
-    messages.value = [];
-    sessionList.value = [];
-    currentSessionId.value = '';
+const logout = (force = false) => {
+// 如果不是强制退出（比如用户点侧边栏按钮），则询问
+  // 如果是强制退出（比如修改密码成功），则直接跳过 confirm
+  if (!force && currentUser.value) {
+    if (!confirm("您确定要退出登录吗？")) {
+      return;
+    }
   }
+  // 执行真正的清理逻辑
+  localStorage.removeItem('user');
+  currentUser.value = null;
+  // 核心：立即切回引导页
+  showGuide.value = true;
+  showProfilePage.value = false;
+  showAdminPage.value = false;
+  // 重置聊天相关的临时状态（可选）
+  messages.value = [];
+  currentSessionId.value = null;
 };
 
 // 从管理模式返回
@@ -261,6 +361,19 @@ const goToAdmin = () => {
   } else {
     alert("权限不足");
   }
+};
+
+// 处理点击侧边栏“管理”的事件
+const handleGoProfile = () => {
+  console.log("接收到进入个人中心的信号");
+  showProfilePage.value = true;
+  showGuide.value = false;      // 🚩 必须关闭引导页，否则引导页层级高会挡住后面
+  showAdminPage.value = false;
+};
+
+// 处理从个人中心返回
+const handleExitProfile = () => {
+  showProfilePage.value = false;
 };
 
 // --- 消息处理 ---

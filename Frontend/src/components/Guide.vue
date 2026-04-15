@@ -8,16 +8,32 @@
                       currentUser.role === 'admin' ? 'bg-amber-500' : 'bg-blue-600']">
           {{ currentUser.nickname[0] }}
         </div>
+
         <div class="flex flex-col">
           <span class="text-white text-sm font-semibold">你好，{{ currentUser.nickname }}</span>
           <span class="text-[10px] text-gray-400 leading-none">AI 助手已就绪</span>
         </div>
-        <div class="w-px h-4 bg-white/10 mx-1"></div>
-        <button @click.stop="$emit('logout')" class="text-xs text-gray-300 hover:text-red-400 transition-colors px-2">退出</button>
-      </div>
 
-      <button v-else @click.stop="$emit('open-login')"
-              class="group flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-7 py-2.5 rounded-full text-sm font-bold shadow-xl transition-all active:scale-95 relative z-[110]">
+        <div class="w-px h-4 bg-white/10 mx-1"></div>
+
+        <div class="flex items-center gap-2">
+          <button
+            @click="$emit('go-profile')"
+            class="flex items-center justify-center gap-1 py-1.5 px-3 rounded-md bg-white/5 hover:bg-white/10 text-gray-300 text-xs transition-all"
+          >
+            <span>⚙️</span> 管理
+          </button>
+          <button
+            @click.stop="$emit('logout',false)"
+            class="text-xs text-gray-300 hover:text-red-400 transition-colors px-2"
+          >
+            <span>🚪</span> 退出
+          </button>
+        </div>
+      </div> <button v-else
+              @click.stop="$emit('open-login')"
+              class="group flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-7 py-2.5 rounded-full text-sm font-bold shadow-xl transition-all active:scale-95 relative z-[110]"
+      >
         <span>点击登录</span>
         <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l4-4m0 0l-4-4m4 4H7" />
@@ -94,7 +110,7 @@
 <script setup>
 // 确保定义了这些 Emits，否则父组件 App.vue 接收不到信号
 defineProps(['nickname', 'currentUser']);
-defineEmits(['enter', 'open-login', 'logout', 'go-admin']);
+defineEmits(['enter', 'open-login', 'logout', 'go-admin', 'go-profile']);
 </script>
 
 <style scoped>

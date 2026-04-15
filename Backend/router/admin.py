@@ -1,5 +1,6 @@
 import os
 import sys
+from typing import Optional
 
 # 1. 获取 Backend 根目录的绝对路径
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -56,10 +57,13 @@ def check_admin_auth(role: str):
 # --- 用户管理接口 ---
 
 @router.get("/users")
-async def get_all_platform_users(current_user_role: str = Query(...)):
-    """获取所有用户信息"""
+async def get_all_platform_users(
+    current_user_role: str = Query(...),
+    q: Optional[str] = Query(None) # 新增可选搜索参数
+):
+    """获取所有用户信息（支持搜索）"""
     check_admin_auth(current_user_role)
-    return my_db.get_all_users()
+    return my_db.get_all_users(search_query=q)
 
 @router.put("/users/{user_id}")
 async def update_user(user_id: int, data: UserUpdate, current_user_role: str = Query(...)):
@@ -105,3 +109,21 @@ async def delete_session(session_id: str, current_user_role: str = Query(...)):
     if success:
         return {"message": "对话记录已清理"}
     raise HTTPException(status_code=404, detail="未找到该对话或删除失败")
+
+
+class ProfileUpdate(BaseModel):
+    nickname: str
+    old_password: Optional[str] = None
+    new_password: Optional[str] = None
+
+
+@router.put("/users/{user_id}/profile")
+async def update_profile(user_id: int, payload: dict):
+    nickname = payload.get("nickname")
+    old_pwd = payload.get("old_password")
+    new_pwd = payload.get("new_password")
+    success, msg = my_db.update_user_profile_db(user_id, nickname, old_pwd, new_pwd)
+    if not success:
+        raise HTTPException(status_code=400, detail=msg)
+
+    return {"status": "ok"}

@@ -42,6 +42,26 @@
         </button>
       </header>
 
+      <div v-if="activeTab === 'users'">
+        <div class="search-bar-container">
+          <div class="search-input-wrapper">
+            <span class="search-icon">🔍</span>
+            <input
+              v-model="searchQuery"
+              @input="handleSearch"
+              type="text"
+              placeholder="输入用户名或昵称模糊搜索..."
+              class="search-input"
+            />
+            <button v-if="searchQuery" @click="clearSearch" class="clear-btn">✕</button>
+          </div>
+        </div>
+
+        <div class="data-card">
+          <table class="admin-table">
+            </table>
+        </div>
+      </div>
       <div class="content-body">
         <div v-if="activeTab === 'users'" class="data-card">
           <table class="admin-table">
@@ -108,14 +128,38 @@ const userList = ref([]);
 const allSessions = ref([]);
 
 const API_BASE = 'http://127.0.0.1:8000/admin';
+const searchQuery = ref('');
+let searchTimer = null;
+
+// 搜索处理（防抖）
+const handleSearch = () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    fetchUsers();
+  }, 300); // 停止输入 300ms 后再发送请求
+};
+
+// 清除搜索
+const clearSearch = () => {
+  searchQuery.value = '';
+  fetchUsers();
+};
 
 // 获取全量用户
 const fetchUsers = async () => {
   loading.value = true;
   try {
-    const res = await fetch(`${API_BASE}/users?current_user_role=${props.currentUser.role}`);
+    const url = new URL(`${API_BASE}/users`);
+    url.searchParams.append('current_user_role', props.currentUser.role);
+    if (searchQuery.value) {
+      url.searchParams.append('q', searchQuery.value);
+    }
+
+    const res = await fetch(url);
     if (res.ok) userList.value = await res.json();
-  } catch (e) { console.error("加载用户失败", e); }
+  } catch (e) {
+    console.error("搜索用户失败", e);
+  }
   loading.value = false;
 };
 

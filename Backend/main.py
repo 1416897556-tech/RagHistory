@@ -1,7 +1,7 @@
 import os
 import uvicorn
 import asyncio
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException,Body
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from starlette.concurrency import run_in_threadpool
 from router import login,admin
 from database import (
-    create_session_if_not_exists, save_message, get_all_sessions, get_chat_history,delete_chat_session
+    create_session_if_not_exists, save_message, get_all_sessions, get_chat_history,delete_chat_session,update_session_title_db
 )
 from schemas import ChatRequest
 import auth
@@ -96,6 +96,25 @@ async def get_history(session_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.put("/sessions/{session_id}/title")
+async def update_session_title(session_id: str, payload: dict = Body(...)):
+    """
+    修改对话记录标题的接口
+    """
+    new_title = payload.get("title")
+
+    if not new_title or not new_title.strip():
+        raise HTTPException(status_code=400, detail="标题内容不能为空")
+
+    # 调用 database.py 中的函数
+    success = update_session_title_db(session_id, new_title.strip())
+
+    if not success:
+        raise HTTPException(status_code=500, detail="服务器内部错误，无法更新标题")
+
+    return {"status": "success", "message": "标题已更新"}
+
 @app.post("/chat_stream")
 async def chat_stream_endpoint(request: ChatRequest):
     # 显式检查 assistant 是否存在
@@ -125,7 +144,6 @@ async def chat_stream_endpoint(request: ChatRequest):
         try:
             # 遍历 LlamaIndex 生成的 token
             for token in streaming_response.response_gen:
-                #print(f"收到Token: {token}")  # <--- 看控制台是否在持续跳动
                 full_response += token
                 yield token
                 await asyncio.sleep(0.01)

@@ -94,9 +94,6 @@ class HistoryRAGAssistant:
             yield f"【对话引擎发生错误】: {str(e)}"
 
     def get_chat_engine(self, session_id: str):
-        """
-        核心修改：从数据库恢复记忆并返回引擎
-        """
         # 1. 从 MySQL 获取历史记录
         # rows 的格式应该是：[('user', '你好'), ('assistant', '同学好！'), ...]
         rows = get_chat_history(session_id)
