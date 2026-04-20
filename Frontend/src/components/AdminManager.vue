@@ -105,13 +105,36 @@
               <p class="session-id">SID: {{ session.id }}</p>
             </div>
             <div class="session-actions">
+              <button @click="handleViewSession(session)" class="icon-action" title="查看详情">👁️</button>
               <button @click="handleEditSession(session)" class="icon-action" title="修改标题">📝</button>
               <button @click="handleDeleteSession(session.id)" class="icon-action delete" title="删除对话">🗑️</button>
             </div>
           </div>
           <div v-if="allSessions.length === 0" class="empty-state">目前全系统没有任何对话记录</div>
         </div>
-      </div>
+        <div v-if="showSessionDetail" class="detail-overlay" @click.self="closeDetail">
+          <div class="detail-modal animate-fade-in">
+            <header class="detail-header">
+              <div>
+                <h3>{{ activeSessionTitle }}</h3>
+                <p class="text-xs text-gray-400">对话历史记录监控</p>
+              </div>
+              <button @click="closeDetail" class="close-modal-btn">✕</button>
+            </header>
+
+            <div class="detail-content scrollbar-thin">
+              <div v-for="(msg, index) in currentDetailMessages" :key="index"
+                   :class="['msg-bubble', msg.role === 'user' ? 'user-msg' : 'ai-msg']">
+                <div class="msg-role">{{ msg.role === 'user' ? '用户' : 'AI 助手' }}</div>
+                <div class="msg-text">{{ msg.content }}</div>
+                  </div>
+                  <div v-if="currentDetailMessages.length === 0" class="empty-detail">
+                    该会话暂无消息内容
+                  </div>
+              </div>
+            </div>
+          </div>
+        </div>
     </main>
   </div>
 </template>
@@ -126,11 +149,38 @@ const activeTab = ref('users');
 const loading = ref(false);
 const userList = ref([]);
 const allSessions = ref([]);
-
+const showSessionDetail = ref(false);     // 控制详情弹窗显示
+const currentDetailMessages = ref([]);    // 存储抓取到的对话记录
+const activeSessionTitle = ref('');       // 记录弹窗顶部的标题
 const API_BASE = 'http://127.0.0.1:8000/admin';
 const searchQuery = ref('');
 let searchTimer = null;
 
+const handleViewSession = async (session) => {
+  activeSessionTitle.value = session.title || '未命名对话';
+  loading.value = true;
+  try {
+    // 🚩 调用你之前在 admin.py 中写好的接口
+    const res = await fetch(`http://127.0.0.1:8000/admin/sessions/${session.id}/messages?current_user_role=${props.currentUser.role}`);
+    if (res.ok) {
+      const result = await res.json();
+      currentDetailMessages.value = result.data;
+      showSessionDetail.value = true; // 开启弹窗
+    } else {
+      alert("无法加载对话详情");
+    }
+  } catch (e) {
+    console.error("加载详情失败", e);
+  } finally {
+    loading.value = false;
+  }
+};
+
+// 关闭弹窗
+const closeDetail = () => {
+  showSessionDetail.value = false;
+  currentDetailMessages.value = [];
+};
 // 搜索处理（防抖）
 const handleSearch = () => {
   clearTimeout(searchTimer);
@@ -471,5 +521,102 @@ const handleDeleteSession = async (id) => {
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+/* 弹窗遮罩 */
+.detail-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.7); /* 深色半透明 */
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* 弹窗主体 */
+.detail-modal {
+  background: white;
+  width: 90%;
+  max-width: 700px;
+  height: 80vh;
+  border-radius: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.detail-header {
+  padding: 1.5rem 2rem;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.detail-header h3 {
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.close-modal-btn {
+  font-size: 1.5rem;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+/* 消息内容区 */
+.detail-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+  background: #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.msg-bubble {
+  max-width: 85%;
+  padding: 1rem;
+  border-radius: 1rem;
+  position: relative;
+}
+
+.msg-role {
+  font-size: 0.7rem;
+  font-weight: 900;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.user-msg {
+  align-self: flex-end;
+  background: #3b82f6;
+  color: white;
+  border-bottom-right-radius: 0.25rem;
+}
+
+.ai-msg {
+  align-self: flex-start;
+  background: white;
+  color: #1e293b;
+  border-bottom-left-radius: 0.25rem;
+  border: 1px solid #e2e8f0;
+}
+
+.msg-text {
+  line-height: 1.6;
+  font-size: 0.95rem;
+  white-space: pre-wrap; /* 保留换行 */
+}
+
+.empty-detail {
+  text-align: center;
+  margin-top: 5rem;
+  color: #94a3b8;
 }
 </style>

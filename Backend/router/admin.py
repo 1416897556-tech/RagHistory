@@ -127,3 +127,27 @@ async def update_profile(user_id: int, payload: dict):
         raise HTTPException(status_code=400, detail=msg)
 
     return {"status": "ok"}
+
+
+@router.get("/sessions/{session_id}/messages")
+async def get_session_messages(session_id: str):
+    """
+    获取特定会话的历史消息详情
+    """
+    try:
+        # 调用你写好的 database.py 函数
+        rows = my_db.get_chat_history(session_id)
+
+        # 将数据库返回的 Row 对象转换为前端易读的列表格式
+        history = [
+            {"role": row.role, "content": row.content}
+            for row in rows
+        ]
+
+        return {
+            "status": "success",
+            "data": history
+        }
+    except Exception as e:
+        print(f"获取消息失败: {e}")
+        raise HTTPException(status_code=500, detail="无法读取对话记录")

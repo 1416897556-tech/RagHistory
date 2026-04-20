@@ -69,8 +69,6 @@ class HistoryRAGAssistant:
         Settings.llm = self.llm
         self.index = self._initialize_index()
         self.memory = ChatMemoryBuffer.from_defaults(token_limit=3000)
-
-        # 将原本在 run_chat 里的引擎配置搬到这里
         self.chat_engine = self.index.as_chat_engine(
             chat_mode="context",
             memory=self.memory,
