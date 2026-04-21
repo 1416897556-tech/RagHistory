@@ -89,12 +89,10 @@ async def delete_session(session_id: str):
 @app.get("/history/{session_id}")
 async def get_history(session_id: str):
     try:
-        rows = get_chat_history(session_id)
-        # 格式化为前端 messages 数组需要的格式
-        messages = [{"role": r[0], "content": r[1]} for r in rows]
+        messages = get_chat_history(session_id)
         return messages
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"数据库读取失败: {str(e)}")
 
 
 @app.put("/sessions/{session_id}/title")
