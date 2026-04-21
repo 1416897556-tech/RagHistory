@@ -130,19 +130,17 @@ async def update_profile(user_id: int, payload: dict):
 
 
 @router.get("/sessions/{session_id}/messages")
-async def get_session_messages(session_id: str):
+async def get_session_messages(session_id: str, current_user_role: str):
     """
-    获取特定会话的历史消息详情
+    管理员获取特定会话的历史消息详情
     """
-    try:
-        # 调用你写好的 database.py 函数
-        rows = my_db.get_chat_history(session_id)
+    if current_user_role != "admin":
+        raise HTTPException(status_code=403, detail="权限不足，仅限管理员查看")
 
-        # 将数据库返回的 Row 对象转换为前端易读的列表格式
-        history = [
-            {"role": row.role, "content": row.content}
-            for row in rows
-        ]
+    try:
+        # 🚩 调用 ORM 版的数据库函数
+        # 此时 history 已经是类似于 [{"role": "user", "content": "..."}, ...] 的格式
+        history = my_db.get_chat_history(session_id)
 
         return {
             "status": "success",
