@@ -229,7 +229,8 @@ def update_user_profile_db(user_id, nickname, old_password, new_password):
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
             return False, "用户未找到"
-
+        if len(new_password) < 5:
+            return {"success": False, "message": "注册失败：密码长度不能少于 5 位"}
         if new_password:
             if not pwd_context.verify(old_password, user.password_hash):
                 return False, "原密码验证失败"

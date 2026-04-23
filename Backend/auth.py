@@ -20,7 +20,10 @@ def register_user(username, nickname, password,role="user"):
     # 1. 检查用户是否已存在
     if get_user_by_username(username):
         return {"success": False, "message": "用户名已存在"}
-
+    if len(password) < 5:
+        return {"success": False, "message": "注册失败：密码长度不能少于 5 位"}
+    if len(username) < 8:
+        return {"success": False, "message": "注册失败：账号长度不能少于 8 位"}
     # 2. 密码加密并存入
     hashed = hash_password(password)
     if insert_new_user(username, nickname, hashed,role):

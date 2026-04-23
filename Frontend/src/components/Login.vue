@@ -73,6 +73,14 @@ const form = reactive({
 const API_BASE = 'http://127.0.0.1:8000/auth';
 
 const handleSubmit = async () => {
+  if (isRegister.value && form.password.length < 5) {
+    alert('密码长度不能少于 5 位');
+    return;
+  }
+  if (isRegister.value && form.username.length < 8) {
+    alert('账号长度不能少于 8 位');
+    return;
+  }
   loading.value = true;
   const endpoint = isRegister.value ? '/register' : '/login';
 
